@@ -1,0 +1,54 @@
+{
+  "personas": [
+    {
+      "name": "AuthFlowPersona",
+      "baseUrl": "https://qa6-care-tier4.sprinklr.com",
+      "steps": [
+        {
+          "name": "Login",
+          "protocol": "REST",
+          "method": "GET",
+          "path": "/care/community/login",
+          "headers": {
+            "Content-Type": "application/json",
+            "username": "uu",
+            "password": "pp",
+            "Accept": "application/json",
+            "X-Community-Authorization": "Bearer ",
+            "Cookie": "JSESSIONID=; connect.sid=s%"
+          },
+          "extract": {
+            "authToken": "accessToken",
+            "communityUserId": "communityUserId"
+          },
+          "expectedStatus": 200
+        },
+        {
+          "name": "Post",
+          "protocol": "REST",
+          "method": "POST",
+          "path": "/care/community/rest/authenticated/message/post",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Community-Authorization": "Bearer ${authToken}",
+            "Cookie": "JSESSIONID="
+          },
+          "body": {
+            "topics": [
+              "6638e4cbf3e7616036f38ec3"
+            ],
+            "title": "new post",
+            "message": "new123",
+            "communityPostType": "QUESTION",
+            "tags": [
+              "magenta smarthome app"
+            ],
+
+            "customFields": {}
+          },
+          "expectedStatus": 200
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,53 @@
+{
+  "personas": [
+    {
+      "name": "SearchMessagesPersona",
+      "baseUrl": "https://care-api-prod0-tier3.sprinklr.com",
+      "steps": [
+        {
+          "name": "SearchMessages",
+          "protocol": "REST",
+          "method": "POST",
+          "path": "/care/community/rest/un-authenticated/message/search-messages",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Community-Authorization": "Bearer -------",
+            "X-Request-id": "Muahaha",
+            "X-COUNTRY": "IND",
+            "X-LANGUAGE": "en",
+            "x-page-url": "https://3b3f8c67-471e-41c0-b99e-0516b83752b2.prod0-tier3-care.sprinklr.com/community/en/topics/test-desktop/6960adae5c23e868ab3a169f/",
+            "Cookie": "AWSALB=//; AWSALBCORS=//"
+          },
+          "body": {
+            "additional": {
+              "includeCustomPages": "false",
+              "appendHierarchyDetails": "true",
+              "locale": "en",
+              "appendLastReplyByUser": "true",
+              "applyUserSort": "false",
+              "useAISearch": null
+            },
+            "filters": [
+              {}
+            ],
+            "queries": [],
+            "page": {
+              "page": 0,
+              "size": 10
+            },
+            "sorts": [
+              {
+                "key": "cTm",
+                "order": "DESC",
+                "additional": {
+                  "missing": "_last"
+                }
+              }
+            ]
+          },
+          "expectedStatus": 200
+        }
+      ]
+    }
+  ]
+}

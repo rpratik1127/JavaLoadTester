@@ -1,0 +1,94 @@
+{
+  "personas": [
+    {
+      "name": "UnauthFlowPersona",
+      "baseUrl": "https://qa6-care-tier4.sprinklr.com",
+      "steps": [
+        {
+          "name": "GetUnauthToken",
+          "protocol": "REST",
+          "method": "POST",
+          "path": "/care/community/jwt/un-authenticated/token",
+          "queryParams": {
+            "requestToken": "..----"
+          },
+          "extract": {
+            "unauthToken": "$body"
+          },
+          "expectedStatus": 200
+        },
+        {
+          "name": "SearchMessages",
+          "protocol": "REST",
+          "method": "POST",
+          "path": "/care/community/rest/un-authenticated/message/search-messages",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Community-Authorization": "Bearer ${unauthToken}"
+          },
+          "body": {
+            "filters": [
+              {
+                "field": "cId",
+                "filterType": "IN",
+                "values": []
+              }
+            ],
+            "page": {
+              "page": 0,
+              "size": 10
+            },
+            "sorts": [
+              {
+                "key": "cTm",
+                "order": "DESC"
+              }
+            ]
+          },
+          "expectedStatus": 200
+        },
+        {
+          "name": "OpenPostLookup",
+          "protocol": "REST",
+          "method": "GET",
+          "path": "/care/community/rest/un-authenticated/lookup/community_message/6a2143836616cd0f1249cd2e",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Community-Authorization": "Bearer ${unauthToken}"
+          },
+          "expectedStatus": 200
+        },
+        {
+          "name": "SearchComments",
+          "protocol": "REST",
+          "method": "POST",
+          "path": "/care/community/rest/un-authenticated/external/message/search-comments-with-replies",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Community-Authorization": "Bearer ${unauthToken}"
+          },
+          "body": {
+            "filters": [
+              {
+                "field": "cId",
+                "filterType": "IN",
+                "values": []
+              }
+            ],
+            "page": {
+              "page": 0,
+              "size": 10
+            },
+            "sorts": [
+              {
+                "key": "cTm",
+                "order": "DESC"
+              }
+            ]
+          },
+          "expectedStatus": 200
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,149 @@
+{
+  "personas": [
+    {
+      "name": "AuthFlowPersona",
+      "baseUrl": "https://qa6-care-tier4.sprinklr.com",
+      "steps": [
+        {
+          "name": "GetUnauthToken",
+          "protocol": "REST",
+          "method": "POST",
+          "path": "/care/community/jwt/un-authenticated/token",
+          "queryParams": {
+            "requestToken": "..----"
+          },
+
+          "extract": {
+            "unauthToken": "$body"
+          },
+          "expectedStatus": 200
+        },
+        {
+          "name": "Login",
+          "protocol": "REST",
+          "method": "GET",
+          "path": "/care/community/login",
+          "headers": {
+            "Content-Type": "application/json",
+            "username": "Arygan07",
+            "password": "HLK3Txcef#",
+            "Accept": "application/json",
+            "X-Community-Authorization": "Bearer ${unauthToken}",
+            "Cookie": "JSESSIONID=; connect.sid=s%3"
+          },
+          "extract": {
+            "authToken": "accessToken",
+            "communityUserId": "communityUserId"
+          },
+          "expectedStatus": 200
+        },
+        {
+          "name": "Post",
+          "protocol": "REST",
+          "method": "POST",
+          "path": "/care/community/rest/authenticated/message/post",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Community-Authorization": "Bearer ${authToken}",
+            "Cookie": "JSESSIONID="
+          },
+          "body": {
+            "topics": [
+              "6638ed7a40ae7d2d4bb36050"
+            ],
+            "title": "new post",
+            "message": "new123",
+            "communityPostType": "QUESTION",
+            "tags": [
+              "magenta smarthome app"
+            ],
+
+            "customFields": {}
+          },
+
+          "extract": {
+            "postId": "id",
+            "postCId": "cId"
+          },
+          "thinkTimeMs": 1000,
+          "expectedStatus": 200
+        },
+        {
+          "name": "Comment",
+          "protocol": "REST",
+          "method": "POST",
+          "path": "/care/community/rest/authenticated/message/comment",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Community-Authorization": "Bearer ${authToken}",
+            "Cookie": "JSESSIONID="
+          },
+          "body": {
+            "objectId": "${postId}",
+            "message": "load testing comment"
+          },
+          "extract": {
+            "commentId": "id",
+            "commentCId": "cId"
+          },
+          "thinkTimeMs": 1000,
+          "expectedStatus": 200
+        },
+        {
+          "name": "Reply",
+          "protocol": "REST",
+          "method": "POST",
+          "path": "/care/community/rest/authenticated/message/reply",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Community-Authorization": "Bearer ${authToken}",
+            "Cookie": "JSESSIONID="
+          },
+          "body": {
+            "objectId": "${commentId}",
+            "message": "load testers reply to comment"
+          },
+          "extract": {
+            "replyId": "id",
+            "replyCId": "cId"
+          },
+          "thinkTimeMs": 1000,
+          "expectedStatus": 200
+        },
+        {
+          "name": "SearchMessages",
+          "protocol": "REST",
+          "method": "POST",
+          "path": "/care/community/rest/un-authenticated/message/search-messages",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Community-Authorization": "Bearer ${authToken}"
+          },
+          "body": {
+            "filters": [
+              {
+                "field": "Id",
+                "filterType": "IN",
+                "values": [
+                  "${postId}"
+                ]
+              }
+            ],
+            "page": {
+              "page": 0,
+              "size": 10
+            },
+            "sorts": [
+              {
+                "key": "cTm",
+                "order": "DESC"
+              }
+            ]
+          },
+
+          "expectedStatus": 200
+        }
+      ]
+    }
+  ]
+}
