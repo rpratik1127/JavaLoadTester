@@ -1,0 +1,53 @@
+{
+  "personas": [
+    {
+      "name": "SprinklrMessageSearch",
+      "baseUrl": "https://qa6-care-tier4.sprinklr.com",
+      "steps": [
+        {
+          "name": "SearchMessages",
+          "protocol": "REST",
+          "method": "POST",
+          "path": "/care/community/rest/un-authenticated/message/search-messages",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Community-Authorization": "Bearer ----",
+            "X-Request-id": "Muahaha",
+            "X-COUNTRY": "IND",
+            "X-LANGUAGE": "en",
+            "x-page-url": "http://www.dell.com/community/en/topics/laptops-general-read-only/?page=2",
+            "Cookie": "JSESSIONID="
+          },
+          "body": {
+            "additional": {
+              "includeCustomPages": "false",
+              "appendHierarchyDetails": "true",
+              "locale": "en",
+              "appendLastReplyByUser": "true",
+              "applyUserSort": "false",
+              "useAISearch": null,
+              "includeArchivedAssetType": "CATEGORY",
+              "includeArchivedAssetId": "647a1db3abcdf40a319897f7"
+            },
+            "filters": [{}],
+            "queries": [],
+            "page": {
+              "page": 0,
+              "size": 25
+            },
+            "sorts": [
+              {
+                "key": "cTm",
+                "order": "DESC",
+                "additional": {
+                  "missing": "_last"
+                }
+              }
+            ]
+          },
+          "expectedStatus": 200
+        }
+      ]
+    }
+  ]
+}

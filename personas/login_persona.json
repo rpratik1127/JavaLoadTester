@@ -1,0 +1,50 @@
+{
+  "personas": [
+    {
+      "name": "AuthFlowPersona",
+      "baseUrl": "https://qa6-care-tier4.sprinklr.com",
+      "steps": [
+        {
+          "name": "Login",
+          "protocol": "REST",
+          "method": "GET",
+          "path": "/care/community/login",
+          "headers": {
+            "Content-Type": "application/json",
+            "username": "uu",
+            "password": "pp",
+            "Accept": "application/json",
+            "X-Community-Authorization": "Bearer ",
+            "Cookie": "JSESSIONID=; connect.sid=s%0"
+          },
+          "extract": {
+            "authToken": "$.accessToken",
+            "communityUserId": "$.communityUserId"
+          },
+          "expectedStatus": 200
+        },
+        {
+          "name": "Post",
+          "protocol": "REST",
+          "method": "POST",
+          "path": "/care/community/rest/authenticated/message/post",
+          "headers": {
+            "Content-Type": "application/json",
+            "X-Community-Authorization": "Bearer ${authToken}",
+            "Cookie": "JSESSIONID="
+          },
+          "body": {
+            "topics": [
+              "69cdf0b74d9f504542855394"
+            ],
+            "title": "Bad Actor Creating a new Camera Post via API",
+            "message": "This is a new question! Can someone help me with the answer? I'd like to know more please! The time is 1780470245",
+            "communityPostType": "QUESTION",
+            "customFields": {}
+          },
+          "expectedStatus": 200
+        }
+      ]
+    }
+  ]
+}
