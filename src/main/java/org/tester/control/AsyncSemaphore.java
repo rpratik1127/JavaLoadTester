@@ -22,26 +22,43 @@ public class AsyncSemaphore {
     }
 
     public CompletableFuture<Void> acquire() {
-        while (true) {
-            int current = inUse.get();
-            if (current >= maxPermits) {
-                break;
-            }
-            if (inUse.compareAndSet(current, current + 1)) {
-                return CompletableFuture.completedFuture(null);
-            }
+        if (tryAcquirePermit()) {
+            return CompletableFuture.completedFuture(null);
         }
 
         CompletableFuture<Void> waiter = new CompletableFuture<>();
         waiters.add(waiter);
+
+        // Lost-wakeup guard: a release may have happened between the failed try and enqueue.
+        if (tryAcquirePermit()) {
+            waiters.remove(waiter);
+            if (!waiter.isDone()) {
+                waiter.complete(null);
+            }
+            return CompletableFuture.completedFuture(null);
+        }
+
         return waiter;
     }
 
+    private boolean tryAcquirePermit() {
+        while (true) {
+            int current = inUse.get();
+            if (current >= maxPermits) {
+                return false;
+            }
+            if (inUse.compareAndSet(current, current + 1)) {
+                return true;
+            }
+        }
+    }
+
     public void release() {
-        // Prefer handing the permit to a queued acquirer over decrementing inUse.
         CompletableFuture<Void> waiter = waiters.poll();
         if (waiter != null) {
-            waiter.complete(null);
+            if (!waiter.isDone()) {
+                waiter.complete(null);
+            }
             return;
         }
 

@@ -63,7 +63,9 @@ public class Main {
         }
 
         // --- Finalize counts and reports (single metrics snapshot) ---
-        LoadTestShutdown.drainInflightHttp();
+        if (loadConfig.mode != LoadInputMode.REQUESTS) {
+            LoadTestShutdown.drainInflightHttp();
+        }
 
         if (loadConfig.mode == LoadInputMode.REQUESTS) {
             RequestModeCompletionReporter.print(metricsCollector, loadConfig, testPlan.personas);
@@ -96,6 +98,8 @@ public class Main {
 
         if (!options.generateRequestLog) {
             System.out.println("[Main] request log disabled (--no-request-log)");
+        } else {
+            System.out.println("[Main] request log enabled -> " + TestConstants.REQUEST_LOG_FILE);
         }
 
         return metricsCollector;

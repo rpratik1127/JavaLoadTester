@@ -15,6 +15,8 @@ public class RequestMetric {
     public long timestamp;
     public RequestFailureReason failureReason;
     public String errorDetail;
+    /** Optional per-phase nanosecond timestamps for request-log / diagnostics. */
+    public RequestPhaseTimings phaseTimings;
 
     public RequestMetric(
             String userId,

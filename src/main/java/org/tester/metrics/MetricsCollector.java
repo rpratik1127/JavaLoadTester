@@ -569,11 +569,83 @@ public class MetricsCollector {
     }
 
     // =========================================================================
+    // Phase timing aggregates
+    // =========================================================================
+
+    public PhaseTimingSummary getPhaseTimingSummary() {
+        long count = 0;
+        double toAcquireStart = 0;
+        double acquire = 0;
+        double queueToWrite = 0;
+        double write = 0;
+        double serverTtfb = 0;
+        double headerToFirstChunk = 0;
+        double bodyOnWire = 0;
+        double aggregateWait = 0;
+        double body = 0;
+        double total = 0;
+
+        for (RequestMetric metric : getAllMetrics()) {
+            if (metric.phaseTimings == null) {
+                continue;
+            }
+            RequestPhaseTimings t = metric.phaseTimings;
+            if (t.fullResponseNanos <= 0) {
+                continue;
+            }
+            count++;
+            toAcquireStart += safeMs(t.toAcquireStartMs());
+            acquire += safeMs(t.acquireMs());
+            queueToWrite += safeMs(t.queueToWriteMs());
+            write += safeMs(t.writeMs());
+            serverTtfb += safeMs(t.serverTtfbMs());
+            headerToFirstChunk += safeMs(t.headerToFirstChunkMs());
+            bodyOnWire += safeMs(t.bodyOnWireMs());
+            aggregateWait += safeMs(t.aggregateWaitMs());
+            body += safeMs(t.bodyMs());
+            total += safeMs(t.totalMs());
+        }
+
+        if (count == 0) {
+            return PhaseTimingSummary.empty();
+        }
+
+        return new PhaseTimingSummary(
+                count,
+                toAcquireStart / count,
+                acquire / count,
+                queueToWrite / count,
+                write / count,
+                serverTtfb / count,
+                headerToFirstChunk / count,
+                bodyOnWire / count,
+                aggregateWait / count,
+                body / count,
+                total / count
+        );
+    }
+
+    private static double safeMs(long value) {
+        return value < 0 ? 0 : value;
+    }
+
+    // =========================================================================
     // Raw metrics
     // =========================================================================
 
     public List<RequestMetric> getAllMetrics() {
-        List<RequestMetric> result = new ArrayList<>(RAW_SIZE);
+        long recorded = Math.min(rawIndex.get(), RAW_SIZE);
+        List<RequestMetric> result = new ArrayList<>((int) recorded);
+
+        if (recorded < RAW_SIZE) {
+            for (int i = 0; i < recorded; i++) {
+                RequestMetric metric = rawRing[i];
+                if (metric != null) {
+                    result.add(metric);
+                }
+            }
+            return result;
+        }
 
         for (RequestMetric metric : rawRing) {
             if (metric != null) {

@@ -16,6 +16,14 @@ public class ApiStep {
 
     /** Pre-serialized JSON when body has no ${variables}; set at parse time. */
     public transient String cachedJsonBody;
+    /** UTF-8 bytes for {@link #cachedJsonBody}; avoids per-request encoding on the hot path. */
+    public transient byte[] cachedBodyBytes;
+
+    /**
+     * Immutable request template when URL, headers, and body are static (no {@code ${}} variables).
+     * Each send uses {@code retainedDuplicate()} on the content buffer.
+     */
+    public transient io.netty.handler.codec.http.FullHttpRequest cachedRequestTemplate;
 
     public Integer expectedStatus;
     public Integer thinkTimeMs;

@@ -3,6 +3,7 @@ package org.tester.runner;
 import org.tester.control.PersonaRequestLimiter;
 import org.tester.control.RequestModePacer;
 import org.tester.control.ThroughputController;
+import org.tester.executor.HttpExecutor;
 import org.tester.executor.StepExecutor;
 import org.tester.metrics.MetricsCollector;
 import org.tester.metrics.RequestMetric;
@@ -11,9 +12,6 @@ import org.tester.model.Persona;
 import org.tester.runtime.VariableStore;
 
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -21,18 +19,11 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Runs one virtual user: loops through persona steps until time expires or the
  * request budget is exhausted. Each step is gated by optional TPS control and
  * budget acquisition before the HTTP send.
+ * <p>
+ * Uses a direct loop on virtual threads (blocking join on async HTTP futures)
+ * instead of deep CompletableFuture chains — lower allocation and scheduling overhead.
  */
 public class VirtualUser implements Runnable {
-
-    /** Shared scheduler for think-time delays across all virtual users. */
-    private static final ScheduledExecutorService SCHEDULER = Executors.newScheduledThreadPool(
-            Math.max(2, Runtime.getRuntime().availableProcessors() / 2),
-            r -> {
-                Thread t = new Thread(r, "async-vu-scheduler");
-                t.setDaemon(true);
-                return t;
-            }
-    );
 
     private final String userId;
     private final Persona persona;
@@ -119,92 +110,80 @@ public class VirtualUser implements Runnable {
     public void run() {
         try {
             VariableStore variableStore = new VariableStore();
-            runIterations(variableStore).join();
+            while (!shouldStop() && !isBudgetExhausted()) {
+                runOneIteration(variableStore);
+            }
         } finally {
+            if (requestModePacer == null) {
+                HttpExecutor.releaseDedicatedChannel(userId, persona.baseUrl);
+            }
             if (activeUserCounter != null) {
                 activeUserCounter.decrementAndGet();
             }
         }
     }
 
-    private CompletableFuture<Void> runIterations(VariableStore variableStore) {
-        if (shouldStop() || isBudgetExhausted()) {
-            return CompletableFuture.completedFuture(null);
-        }
+    private void runOneIteration(VariableStore variableStore) {
+        for (int stepIndex = 0; stepIndex < persona.steps.size(); stepIndex++) {
+            if (shouldStop() || isBudgetExhausted()) {
+                return;
+            }
 
-        return runAllSteps(0, variableStore)
-                .thenCompose(ignored -> runIterations(variableStore));
+            ApiStep step = persona.steps.get(stepIndex);
+
+            if (!acquireSendGateSync()) {
+                return;
+            }
+
+            if (!acquireBudgetSync()) {
+                return;
+            }
+
+            if (shouldStop()) {
+                releaseBudget();
+                return;
+            }
+
+            executeAndRecord(step, variableStore);
+            sleepThinkTime(step);
+        }
     }
 
-    private CompletableFuture<Void> runAllSteps(int stepIndex, VariableStore variableStore) {
-        if (shouldStop() || isBudgetExhausted() || stepIndex >= persona.steps.size()) {
-            return CompletableFuture.completedFuture(null);
+    private boolean acquireSendGateSync() {
+        if (throughputController == null) {
+            return true;
         }
-
-        ApiStep step = persona.steps.get(stepIndex);
-
-        if (shouldStop()) {
-            return CompletableFuture.completedFuture(null);
-        }
-
-        // Pipeline per step: TPS gate → budget → HTTP → metrics → think time → next step.
-        return acquireSendGate()
-                .thenCompose(ignored -> checkStopAndAcquireBudget())
-                .thenCompose(granted -> executeStepIfGranted(granted, step, variableStore))
-                .handle((metric, error) -> recordMetrics(step, metric, error))
-                .thenCompose(ignored -> scheduleThinkTime(step))
-                .thenCompose(ignored -> runAllSteps(stepIndex + 1, variableStore));
+        throughputController.acquireAsync().join();
+        return !shouldStop();
     }
 
-    private CompletableFuture<Boolean> acquireSendGate() {
-        if (throughputController != null) {
-            return throughputController.acquireAsync().thenApply(ignored -> true);
+    private boolean acquireBudgetSync() {
+        if (requestModePacer != null) {
+            if (requestModePacer.tryAcquireNow(persona.name)) {
+                return true;
+            }
+            Boolean granted = requestModePacer.acquire(persona.name).join();
+            return Boolean.TRUE.equals(granted);
         }
-        return CompletableFuture.completedFuture(true);
+        if (requestLimiter != null) {
+            return requestLimiter.tryAcquire(persona.name);
+        }
+        return true;
     }
 
-    private CompletableFuture<Boolean> checkStopAndAcquireBudget() {
-        if (shouldStop()) {
-            return CompletableFuture.completedFuture(false);
-        }
-        return acquireBudget();
-    }
-
-    private CompletableFuture<RequestMetric> executeStepIfGranted(
-            Boolean granted,
-            ApiStep step,
-            VariableStore variableStore
-    ) {
-        if (!granted) {
-            return CompletableFuture.completedFuture(null);
-        }
-        // Budget was acquired but the test window closed before send — refund the permit.
-        if (shouldStop()) {
-            releaseBudget();
-            return CompletableFuture.completedFuture(null);
-        }
-        return stepExecutor.executeAsync(userId, persona, step, variableStore);
-    }
-
-    private Void recordMetrics(ApiStep step, RequestMetric metric, Throwable error) {
-        if (error != null) {
+    private void executeAndRecord(ApiStep step, VariableStore variableStore) {
+        try {
+            RequestMetric metric = stepExecutor
+                    .executeAsync(userId, persona, step, variableStore)
+                    .join();
+            if (metric != null) {
+                metricsCollector.add(metric);
+            }
+        } catch (Exception error) {
             metricsCollector.add(
                     RequestMetric.failed(userId, persona.name, step.name, error.getMessage())
             );
-        } else if (metric != null) {
-            metricsCollector.add(metric);
         }
-        return null;
-    }
-
-    private CompletableFuture<Boolean> acquireBudget() {
-        if (requestModePacer != null) {
-            return requestModePacer.acquire(persona.name);
-        }
-        if (requestLimiter != null) {
-            return CompletableFuture.completedFuture(requestLimiter.tryAcquire(persona.name));
-        }
-        return CompletableFuture.completedFuture(true);
     }
 
     private void releaseBudget() {
@@ -223,23 +202,24 @@ public class VirtualUser implements Runnable {
         return false;
     }
 
-    private CompletableFuture<Void> scheduleThinkTime(ApiStep step) {
+    private static void sleepThinkTime(ApiStep step) {
         if (step.thinkTimeMs == null || step.thinkTimeMs <= 0) {
-            return CompletableFuture.completedFuture(null);
+            return;
         }
-
-        CompletableFuture<Void> delay = new CompletableFuture<>();
-        SCHEDULER.schedule(
-                () -> delay.complete(null),
-                step.thinkTimeMs,
-                TimeUnit.MILLISECONDS
-        );
-        return delay;
+        try {
+            Thread.sleep(step.thinkTimeMs);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 
     private boolean shouldStop() {
         if (keepAlive != null && !keepAlive.get()) {
             return true;
+        }
+        // Request mode: run until the budget is fully consumed, not just until end time.
+        if (requestModePacer != null) {
+            return requestModePacer.isExhausted(persona.name);
         }
         return System.currentTimeMillis() >= endTimeMillis;
     }

@@ -6,6 +6,7 @@ import org.tester.model.Persona;
 import org.tester.model.TestPlan;
 
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -26,12 +27,12 @@ public class PersonaParser {
 
         try (InputStream inputStream = Files.newInputStream(path)) {
             TestPlan plan = objectMapper.readValue(inputStream, TestPlan.class);
-            precomputeStaticBodies(plan);
+            precomputeStaticArtifacts(plan);
             return plan;
         }
     }
 
-    private void precomputeStaticBodies(TestPlan plan) throws Exception {
+    private void precomputeStaticArtifacts(TestPlan plan) throws Exception {
         if (plan.personas == null) {
             return;
         }
@@ -42,14 +43,14 @@ public class PersonaParser {
             }
 
             for (ApiStep step : persona.steps) {
-                if (step.body == null || step.body.isEmpty()) {
-                    continue;
+                if (step.body != null && !step.body.isEmpty()) {
+                    String json = objectMapper.writeValueAsString(step.body);
+                    if (!json.contains("${")) {
+                        step.cachedJsonBody = json;
+                        step.cachedBodyBytes = json.getBytes(StandardCharsets.UTF_8);
+                    }
                 }
-
-                String json = objectMapper.writeValueAsString(step.body);
-                if (!json.contains("${")) {
-                    step.cachedJsonBody = json;
-                }
+                StaticHttpRequestCache.precompute(persona, step);
             }
         }
     }

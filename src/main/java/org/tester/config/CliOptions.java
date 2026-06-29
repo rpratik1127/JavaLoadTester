@@ -21,13 +21,15 @@ public final class CliOptions {
     }
 
     public static CliOptions fromArgs(String[] args) {
-        boolean generateRequestLog = true;
+        boolean generateRequestLog = false;
         boolean trackSentRps = false;
         ConnectionMode connectionMode = ConnectionMode.POOLED;
 
         for (String arg : args) {
             if ("--no-request-log".equals(arg)) {
                 generateRequestLog = false;
+            } else if ("--request-log".equals(arg)) {
+                generateRequestLog = true;
             } else if ("--track-sent-rps".equals(arg)) {
                 trackSentRps = true;
             } else if ("--sticky-connections".equals(arg)) {

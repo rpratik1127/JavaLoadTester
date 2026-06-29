@@ -1,6 +1,8 @@
 package org.tester.report;
 
+import org.tester.executor.HttpExecutor;
 import org.tester.metrics.MetricsCollector;
+import org.tester.metrics.PhaseTimingSummary;
 import org.tester.model.Persona;
 
 import java.util.List;
@@ -39,6 +41,8 @@ public class ReportGenerator {
         );
         printPersonaSummaries(metricsCollector, personas);
         printStepSummaries(metricsCollector, personas);
+        printPhaseTimingSummary(metricsCollector);
+        printConnectionMetrics(metricsCollector);
 
         appendCsvSummary(
                 metricsCollector,
@@ -195,6 +199,40 @@ public class ReportGenerator {
                 metricsCollector.getFailedStatus504Count(),
                 metricsCollector.getOtherFailedStatusCount()
         );
+    }
+
+    private static void printPhaseTimingSummary(MetricsCollector metricsCollector) {
+        PhaseTimingSummary phases = metricsCollector.getPhaseTimingSummary();
+        if (phases.sampleCount() == 0) {
+            return;
+        }
+
+        System.out.println("\n===== Request Phase Timings (avg ms) =====");
+        System.out.printf("Samples               : %d%n", phases.sampleCount());
+        System.out.printf("Created -> AcquireStart: %.2f%n", phases.toAcquireStartMs());
+        System.out.printf("AcquireStart -> Acquired: %.2f%n", phases.acquireMs());
+        System.out.printf("Acquired -> Pre-Write   : %.2f  (in-flight + event-loop queue)%n", phases.queueToWriteMs());
+        System.out.printf("Pre-Write -> WriteDone  : %.2f%n", phases.writeMs());
+        System.out.printf("WriteDone -> FirstByte  : %.2f  (server TTFB + network)%n", phases.serverTtfbMs());
+        System.out.printf("FirstByte -> FirstChunk: %.2f  (body stream starts on event loop)%n",
+                phases.headerToFirstChunkMs());
+        System.out.printf("FirstChunk -> LastRead : %.2f  (body on wire, event-loop reads)%n",
+                phases.bodyOnWireMs());
+        System.out.printf("LastRead -> Aggregated : %.2f  (event-loop backlog after bytes received)%n",
+                phases.aggregateWaitMs());
+        System.out.printf("FirstByte -> FullBody   : %.2f  (total body phase)%n", phases.bodyMs());
+        System.out.printf("Created -> FullBody     : %.2f%n", phases.totalMs());
+    }
+
+    private static void printConnectionMetrics(MetricsCollector metricsCollector) {
+        System.out.println("\n===== Connection Metrics =====");
+        System.out.printf("Active channels       : %d%n", HttpExecutor.getActiveChannelCount());
+        System.out.printf("Requests / connection : %.2f%n", HttpExecutor.getRequestsPerConnection());
+        System.out.printf("Connection reuse rate : %.1f%%%n", HttpExecutor.getConnectionReuseRate() * 100.0);
+        System.out.printf("In-flight HTTP ops    : %d%n", HttpExecutor.getInFlightRequestCount());
+        System.out.printf("Latency P50           : %d ms%n", metricsCollector.getPercentileResponseTime(50));
+        System.out.printf("Latency P90           : %d ms%n", metricsCollector.getPercentileResponseTime(90));
+        System.out.printf("Latency P99           : %d ms%n", metricsCollector.getPercentileResponseTime(99));
     }
 
     private record SentRateStats(double maxPerSec, double avgPerSec) {

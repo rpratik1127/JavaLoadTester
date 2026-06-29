@@ -44,12 +44,26 @@ final class UserChannelLease {
     }
 
     void enqueue(SendWork work) {
+        if (!sending && sendQueue.isEmpty()) {
+            sending = true;
+            channel.eventLoop().execute(() -> runWork(work));
+            return;
+        }
         sendQueue.add(work);
         channel.eventLoop().execute(this::drainQueue);
     }
 
+    private void runWork(SendWork work) {
+        try {
+            work.run(this);
+        } catch (Exception error) {
+            sending = false;
+            HttpDebugLog.warn("[HTTP] Send failed for lease " + key, error);
+            drainQueue();
+        }
+    }
+
     void onSendComplete() {
-        sendQueue.poll();
         sending = false;
         drainQueue();
     }

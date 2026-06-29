@@ -46,9 +46,6 @@
                 <version>3.5.0</version>
                 <configuration>
                     <mainClass>org.tester.Main</mainClass>
-                    <arguments>
-                        <argument>--no-request-log</argument>
-                    </arguments>
                     <jvmArgs>
                         <jvmArg>--sun-misc-unsafe-memory-access=allow</jvmArg>
                         <jvmArg>-Xms2g</jvmArg>

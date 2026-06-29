@@ -1,5 +1,6 @@
 package org.tester.runner;
 
+import org.tester.config.TestConstants;
 import org.tester.control.RequestModePacer;
 import org.tester.control.ThroughputController;
 import org.tester.executor.HttpExecutor;
@@ -32,7 +33,15 @@ public class DynamicRequestModeScaler {
     private static final int SCALE_INTERVAL_FAST_MS = 250;
     private static final int SCALE_INTERVAL_SLOW_MS = 500;
     /** Do not spawn when fewer than this many HTTP in-flight slots remain. */
-    private static final int MIN_IN_FLIGHT_HEADROOM = 500;
+    private static final int MIN_IN_FLIGHT_HEADROOM = 100;
+    private static final int MAX_SPAWN_PER_TICK = 100;
+    private static final double WARMUP_LATENCY_SEC = 0.15;
+    /**
+     * Allow enough VUs for target RPS at ~1s RTT (Little's law) without over-spawning.
+     */
+    private static final int MAX_VUS_PER_TARGET_RPS = 4;
+    /** Only treat latency as overload when it exceeds this AND schedule is on track. */
+    private static final double MAX_LATENCY_FOR_SCALING_SEC = 15.0;
 
     private final ExecutorService executorService;
     private final long startTimeMillis;
@@ -96,14 +105,15 @@ public class DynamicRequestModeScaler {
             nextUserId.put(persona.name, new AtomicInteger(1));
 
             int required = maxConcurrentUsers(persona.name, target);
-            int initial = rampUpSeconds <= 0 ? required : rampUserCap(0, required);
+            int initial = computeInitialSpawn(persona.name, target, required);
             for (int i = 0; i < initial; i++) {
                 spawnUser(persona);
             }
 
+            int actualSpawned = spawnedUsers.get(persona.name).get();
             System.out.printf(
-                    "Request mode: starting %d virtual user(s) for %s (target: %d requests in %d sec)%n",
-                    initial, persona.name, target, durationSeconds
+                    "Request mode: starting %d virtual user(s) for %s (target: %d requests in %d sec, est. %d VUs needed)%n",
+                    actualSpawned, persona.name, target, durationSeconds, required
             );
         }
 
@@ -169,22 +179,28 @@ public class DynamicRequestModeScaler {
         long goalToDate = (long) (target * tick.progress());
         boolean behindGoalToDate = goalToDate > 0 && consumed < goalToDate * PROGRESS_THRESHOLD;
         boolean willMissTarget = projectedTotal < target * TARGET_COMPLETION_RATIO;
-        boolean permitsUnused = requestModePacer.getPermitSlack(persona.name) >= 2;
 
         int spawned = spawnedUsers.get(persona.name).get();
-        int neededUsers = usersNeededForRate(persona.name, target, requiredRps);
-        int maxUsers = Math.max(neededUsers, maxConcurrentUsers(persona.name, target));
-        int userCap = behindGoalToDate || willMissTarget || permitsUnused
-                ? maxUsers
-                : rampUserCap(tick.elapsedMs() / 1000, maxUsers);
+        double observedLatencySec = metricsCollector.getAverageResponseTimeForPersona(persona.name) / 1000.0;
+        int userCap = computeUserCap(persona.name, target);
 
-        if (!behindGoalToDate && !willMissTarget && !permitsUnused && spawned >= neededUsers) {
+        // High latency with enough VUs — only stop scaling when not behind schedule.
+        if (observedLatencySec > MAX_LATENCY_FOR_SCALING_SEC
+                && spawned >= userCap / 2
+                && !behindGoalToDate
+                && !willMissTarget) {
+            return false;
+        }
+
+        int neededUsers = usersNeededForRate(persona.name, target, requiredRps);
+
+        if (!behindGoalToDate && !willMissTarget && spawned >= neededUsers) {
             return false;
         }
 
         // At cap but still behind — keep fast scaling ticks; no new spawns this round.
         if (spawned >= userCap) {
-            return true;
+            return behindGoalToDate || willMissTarget;
         }
 
         int usersToAdd = computeUsersToAdd(
@@ -195,8 +211,7 @@ public class DynamicRequestModeScaler {
                 neededUsers,
                 userCap,
                 observedRps,
-                behindGoalToDate,
-                permitsUnused
+                behindGoalToDate
         );
 
         spawnUsers(persona, usersToAdd, userCap);
@@ -212,8 +227,7 @@ public class DynamicRequestModeScaler {
             int neededUsers,
             int userCap,
             double observedRps,
-            boolean behindGoalToDate,
-            boolean permitsUnused
+            boolean behindGoalToDate
     ) {
         int usersToAdd = Math.max(1, neededUsers - spawned);
 
@@ -221,21 +235,33 @@ public class DynamicRequestModeScaler {
             long deficit = goalToDate - consumed;
             double perUserRps = observedRps / spawned;
             int deficitUsers = (int) Math.ceil(deficit / Math.max(1.0, perUserRps));
-            usersToAdd = Math.max(usersToAdd, deficitUsers);
-        }
-
-        if (permitsUnused && spawned > 0 && observedRps > 0) {
-            long slack = requestModePacer.getPermitSlack(persona.name);
-            double perUserRps = observedRps / spawned;
-            int slackUsers = (int) Math.ceil(slack / Math.max(1.0, perUserRps));
-            usersToAdd = Math.max(usersToAdd, slackUsers);
+            usersToAdd = Math.max(usersToAdd, Math.min(deficitUsers, MAX_SPAWN_PER_TICK));
         }
 
         return Math.min(usersToAdd, userCap - spawned);
     }
 
+    private int computeInitialSpawn(String personaName, int target, int required) {
+        int targetRps = RequestModePacer.computeTargetRps(target, durationSeconds);
+        // Start with enough VUs for target RPS at ~1s latency, not a tiny warm-up fraction.
+        int startAtOneSec = RequestModePacer.computeRequiredUsers(target, durationSeconds, 1.0);
+        int warmStart = RequestModePacer.computeRequiredUsers(
+                target, durationSeconds, WARMUP_LATENCY_SEC
+        );
+        int initial = Math.min(required, Math.max(startAtOneSec, warmStart));
+        if (rampUpSeconds <= 0) {
+            int floor = TestConstants.estimateUsersForRps(
+                    Math.max(targetRps, TestConstants.TARGET_TPS),
+                    1.0
+            );
+            return Math.min(initial, Math.max(floor, targetRps));
+        }
+        return Math.max(1, Math.min(required, rampUserCap(0, initial)));
+    }
+
     private void spawnUsers(Persona persona, int usersToAdd, int userCap) {
-        for (int i = 0; i < usersToAdd; i++) {
+        int batch = Math.min(usersToAdd, MAX_SPAWN_PER_TICK);
+        for (int i = 0; i < batch; i++) {
             if (spawnedUsers.get(persona.name).get() >= userCap) {
                 break;
             }
@@ -247,22 +273,41 @@ public class DynamicRequestModeScaler {
     }
 
     private int usersNeededForRate(String personaName, int targetRequests, double requiredRps) {
-        double avgLatencySec = metricsCollector.getAverageResponseTimeForPersona(personaName) / 1000.0;
-        if (avgLatencySec <= 0) {
-            avgLatencySec = 0.1; // warm-up default before first responses arrive
-        }
+        double avgLatencySec = cappedLatencySec(personaName);
         int fromRate = (int) Math.ceil(requiredRps * avgLatencySec * 2.0);
         int fromTarget = RequestModePacer.computeRequiredUsers(
                 targetRequests, durationSeconds, avgLatencySec
         );
-        return Math.max(fromRate, fromTarget);
+        return Math.min(computeUserCap(personaName, targetRequests), Math.max(fromRate, fromTarget));
     }
 
     private int maxConcurrentUsers(String personaName, int targetRequests) {
+        return computeUserCap(personaName, targetRequests);
+    }
+
+    private int computeUserCap(String personaName, int targetRequests) {
         int targetRps = RequestModePacer.computeTargetRps(targetRequests, durationSeconds);
-        double avgLatencySec = metricsCollector.getAverageResponseTimeForPersona(personaName) / 1000.0;
-        int base = RequestModePacer.computeRequiredUsers(targetRequests, durationSeconds, avgLatencySec);
-        return Math.max(base, Math.min(targetRps * 3, targetRequests));
+        double latencySec = cappedLatencySec(personaName);
+        int fromLittle = RequestModePacer.computeRequiredUsers(
+                targetRequests, durationSeconds, latencySec
+        );
+        int floorForTarget = TestConstants.estimateUsersForRps(
+                Math.max(targetRps, TestConstants.TARGET_TPS),
+                1.0
+        );
+        int absoluteMax = Math.max(
+                targetRps * MAX_VUS_PER_TARGET_RPS,
+                TestConstants.estimateUsersForRps(TestConstants.TARGET_TPS, latencySec)
+        );
+        return Math.min(targetRequests, Math.min(absoluteMax, Math.max(fromLittle, floorForTarget)));
+    }
+
+    private double cappedLatencySec(String personaName) {
+        double observed = metricsCollector.getAverageResponseTimeForPersona(personaName) / 1000.0;
+        if (observed <= 0) {
+            return WARMUP_LATENCY_SEC;
+        }
+        return Math.min(observed, MAX_LATENCY_FOR_SCALING_SEC);
     }
 
     private int rampUserCap(long elapsedSec, int maxConcurrentUsers) {
@@ -302,7 +347,7 @@ public class DynamicRequestModeScaler {
                 endTimeMillis,
                 metricsCollector,
                 stepExecutor,
-                throughputController,
+                null,
                 requestModePacer,
                 active
         );

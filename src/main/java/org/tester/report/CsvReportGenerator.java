@@ -1,6 +1,7 @@
 package org.tester.report;
 
 import org.tester.metrics.MetricsCollector;
+import org.tester.metrics.RequestPhaseTimings;
 import org.tester.model.Persona;
 
 import java.io.BufferedWriter;
@@ -153,10 +154,17 @@ public class CsvReportGenerator {
             return;
         }
 
+        var metrics = metricsCollector.getAllMetrics();
         try (BufferedWriter writer = new BufferedWriter(new FileWriter(filePath), WRITE_BUFFER_SIZE)) {
-            writer.write("Timestamp,UserId,Persona,Step,Status Code,Response Time(ms),Success\n");
+            writer.write(
+                    "Timestamp,UserId,Persona,Step,Status Code,Response Time(ms),Success,"
+                            + "ToAcquireStart(ms),Acquire(ms),QueueToWrite(ms),Write(ms),"
+                            + "ServerTTFB(ms),HeaderToFirstChunk(ms),BodyOnWire(ms),"
+                            + "AggregateWait(ms),Body(ms),TotalPhases(ms)\n"
+            );
 
-            for (var metric : metricsCollector.getAllMetrics()) {
+            for (var metric : metrics) {
+                RequestPhaseTimings t = metric.phaseTimings;
                 writer.write(
                         metric.timestamp + "," +
                                 metric.userId + "," +
@@ -164,12 +172,33 @@ public class CsvReportGenerator {
                                 metric.stepName + "," +
                                 metric.statusCode + "," +
                                 metric.responseTimeMs + "," +
-                                metric.success +
+                                metric.success + "," +
+                                phaseField(t, t == null ? -1 : t.toAcquireStartMs()) + "," +
+                                phaseField(t, t == null ? -1 : t.acquireMs()) + "," +
+                                phaseField(t, t == null ? -1 : t.queueToWriteMs()) + "," +
+                                phaseField(t, t == null ? -1 : t.writeMs()) + "," +
+                                phaseField(t, t == null ? -1 : t.serverTtfbMs()) + "," +
+                                phaseField(t, t == null ? -1 : t.headerToFirstChunkMs()) + "," +
+                                phaseField(t, t == null ? -1 : t.bodyOnWireMs()) + "," +
+                                phaseField(t, t == null ? -1 : t.aggregateWaitMs()) + "," +
+                                phaseField(t, t == null ? -1 : t.bodyMs()) + "," +
+                                phaseField(t, t == null ? -1 : t.totalMs()) +
                                 "\n"
                 );
             }
         }
 
-        System.out.println("Detailed request log generated: " + filePath);
+        System.out.printf(
+                "Detailed request log generated: %s (%d requests)%n",
+                filePath,
+                metrics.size()
+        );
+    }
+
+    private static String phaseField(RequestPhaseTimings timings, long valueMs) {
+        if (timings == null || valueMs < 0) {
+            return "";
+        }
+        return Long.toString(valueMs);
     }
 }

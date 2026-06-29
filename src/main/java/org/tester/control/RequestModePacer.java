@@ -34,7 +34,7 @@ public class RequestModePacer {
             int targetRps = computeTargetRps(target, durationSeconds);
             budgets.put(
                     entry.getKey(),
-                    new PersonaRequestBudget(target, startTimeMillis, durationMillis)
+                    new PersonaRequestBudget(target, startTimeMillis, durationMillis, targetRps)
             );
 
             System.out.printf(
@@ -58,6 +58,11 @@ public class RequestModePacer {
         }
         // Little's law style estimate with safety factor for slow responses.
         return Math.max(1, (int) Math.ceil(targetRps * avgLatencySec * 2.5));
+    }
+
+    public boolean tryAcquireNow(String personaName) {
+        PersonaRequestBudget budget = budgets.get(personaName);
+        return budget != null && budget.tryAcquireNow();
     }
 
     public CompletableFuture<Boolean> acquire(String personaName) {

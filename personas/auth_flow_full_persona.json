@@ -10,7 +10,7 @@
           "method": "POST",
           "path": "/care/community/jwt/un-authenticated/token",
           "queryParams": {
-            "requestToken": "..----"
+            "requestToken": "..-----"
           },
 
           "extract": {
