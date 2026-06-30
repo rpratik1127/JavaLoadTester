@@ -1,0 +1,76 @@
+plugins {
+    id 'java-library'
+    id 'maven-publish'
+    id 'application'
+    id 'org.springframework.boot' version '3.4.5'
+    id 'io.spring.dependency-management' version '1.1.7'
+}
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+def nettyTcnativeClassifier = {
+    def arch = System.getProperty('os.arch').toLowerCase()
+    def os = org.gradle.nativeplatform.platform.internal.DefaultNativePlatform.currentOperatingSystem
+    if (os.isLinux()) {
+        return (arch.contains('aarch64') || arch.contains('arm')) ? 'linux-aarch_64' : 'linux-x86_64'
+    }
+    if (os.isMacOsX()) {
+        return (arch.contains('aarch64') || arch.contains('arm')) ? 'osx-aarch_64' : 'osx-x86_64'
+    }
+    if (os.isWindows()) {
+        return 'windows-x86_64'
+    }
+    throw new GradleException(
+            "Unsupported platform for netty-tcnative-boringssl-static: ${os.name} ${arch}"
+    )
+}()
+
+dependencies {
+    implementation libs.spring.boot.starter.web
+    api libs.com.fasterxml.jackson.core.jackson.databind
+    api libs.io.netty.netty.all
+    api libs.io.netty.netty.tcnative.boringssl.static
+    // Gradle does not resolve Maven classifier artifacts from the tcnative POM; add the native jar explicitly.
+    runtimeOnly("io.netty:netty-tcnative-boringssl-static:${libs.versions.io.netty.netty.tcnative.boringssl.static.get()}:${nettyTcnativeClassifier}")
+}
+
+group = 'org.tester'
+version = '1.0-SNAPSHOT'
+description = 'Tester'
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(26)
+    }
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from(components.java)
+        }
+    }
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = 'UTF-8'
+}
+
+tasks.withType(Javadoc) {
+    options.encoding = 'UTF-8'
+}
+
+application {
+    mainClass = 'org.tester.Main'
+}
+
+springBoot {
+    mainClass = 'org.tester.LoadTesterApplication'
+}
+
+tasks.named('run') {
+    standardInput = System.in
+}

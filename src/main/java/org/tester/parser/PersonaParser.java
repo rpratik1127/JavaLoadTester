@@ -27,9 +27,26 @@ public class PersonaParser {
 
         try (InputStream inputStream = Files.newInputStream(path)) {
             TestPlan plan = objectMapper.readValue(inputStream, TestPlan.class);
-            precomputeStaticArtifacts(plan);
-            return plan;
+            return prepare(plan);
         }
+    }
+
+    public TestPlan parseFromJson(String jsonContent) throws Exception {
+        if (jsonContent == null || jsonContent.isBlank()) {
+            throw new IllegalArgumentException("Persona JSON content must not be blank");
+        }
+
+        TestPlan plan = objectMapper.readValue(jsonContent, TestPlan.class);
+        return prepare(plan);
+    }
+
+    /**
+     * Applies static-body precomputation to an already-deserialized {@link TestPlan}.
+     * Used by the API path where persona JSON arrives inline in the request body.
+     */
+    public TestPlan prepare(TestPlan plan) throws Exception {
+        precomputeStaticArtifacts(plan);
+        return plan;
     }
 
     private void precomputeStaticArtifacts(TestPlan plan) throws Exception {
