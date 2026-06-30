@@ -2,8 +2,14 @@ plugins {
     id 'java-library'
     id 'maven-publish'
     id 'application'
-    id 'org.springframework.boot' version '3.4.5'
+    id 'org.springframework.boot' version '4.1.0'
     id 'io.spring.dependency-management' version '1.1.7'
+}
+
+// Spring Boot BOM imports netty-bom, upgrading Netty/tcnative beyond the load tester's
+// pinned versions. Override netty.version and keep tcnative aligned (classes + native jar).
+ext {
+    set('netty.version', libs.versions.io.netty.netty.all.get())
 }
 
 repositories {

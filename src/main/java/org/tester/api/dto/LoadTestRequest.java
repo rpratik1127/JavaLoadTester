@@ -3,14 +3,35 @@ package org.tester.api.dto;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import org.tester.executor.ConnectionMode;
+import org.tester.model.Persona;
 import org.tester.model.TestPlan;
 import org.tester.selector.LoadInputMode;
 
+import java.util.List;
 import java.util.Map;
 
 /**
  * API load test configuration. The complete persona definition must be supplied inline
  * via {@link #persona}; no file paths or filesystem references are accepted.
+ * <p>
+ * Multiple personas are supported. Include every persona name under {@code persona.personas}
+ * and provide a matching entry in {@code valuesPerPersona} for each name (use {@code 0} to skip).
+ *
+ * <pre>{@code
+ * {
+ *   "persona": {
+ *     "personas": [
+ *       { "name": "LoginPersona", "baseUrl": "...", "steps": [ ... ] },
+ *       { "name": "SearchPersona", "baseUrl": "...", "steps": [ ... ] }
+ *     ]
+ *   },
+ *   "loadMode": "USERS",
+ *   "valuesPerPersona": {
+ *     "LoginPersona": 100,
+ *     "SearchPersona": 50
+ *   }
+ * }
+ * }</pre>
  */
 public class LoadTestRequest {
 
@@ -37,6 +58,17 @@ public class LoadTestRequest {
 
     public void setPersona(TestPlan persona) {
         this.persona = persona;
+    }
+
+    /**
+     * Convenience alias for clients that send the personas array at the request root
+     * instead of nested under {@code persona.personas}.
+     */
+    @JsonProperty("personas")
+    public void setPersonas(List<Persona> personas) {
+        TestPlan plan = new TestPlan();
+        plan.personas = personas;
+        this.persona = plan;
     }
 
     public LoadInputMode getLoadInputMode() {

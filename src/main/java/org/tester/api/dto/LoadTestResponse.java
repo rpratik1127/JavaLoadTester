@@ -2,6 +2,7 @@ package org.tester.api.dto;
 
 import java.util.Map;
 
+/** REST payload summarizing load-test results and report file locations. */
 public class LoadTestResponse {
 
     private String executionId;
@@ -25,6 +26,7 @@ public class LoadTestResponse {
     private double maxRequestsSentPerSecond;
     private double averageRequestsSentPerSecond;
     private Map<Integer, Long> failedStatusCodeCounts;
+    private Map<String, PersonaMetricsDto> perPersonaMetrics;
     private String errorMessage;
 
     public String getExecutionId() {
@@ -193,6 +195,14 @@ public class LoadTestResponse {
 
     public void setFailedStatusCodeCounts(Map<Integer, Long> failedStatusCodeCounts) {
         this.failedStatusCodeCounts = failedStatusCodeCounts;
+    }
+
+    public Map<String, PersonaMetricsDto> getPerPersonaMetrics() {
+        return perPersonaMetrics;
+    }
+
+    public void setPerPersonaMetrics(Map<String, PersonaMetricsDto> perPersonaMetrics) {
+        this.perPersonaMetrics = perPersonaMetrics;
     }
 
     public String getErrorMessage() {
