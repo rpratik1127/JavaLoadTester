@@ -77,6 +77,15 @@ springBoot {
     mainClass = 'org.tester.LoadTesterApplication'
 }
 
+tasks.named('bootRun') {
+    mainClass = 'org.tester.LoadTesterApplication'
+}
+
+tasks.named('bootJar') {
+    mainClass = 'org.tester.LoadTesterApplication'
+}
+
 tasks.named('run') {
+    mainClass = 'org.tester.Main'
     standardInput = System.in
 }
