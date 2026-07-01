@@ -14,15 +14,18 @@ public final class HttpConnectionMetrics {
     private HttpConnectionMetrics() {
     }
 
+    /** Increments active and lifetime channel counters when a pool channel is created. */
     public static void channelActivated() {
         activeChannels.incrementAndGet();
         channelsCreated.incrementAndGet();
     }
 
+    /** Decrements the active channel count when a connection closes. */
     public static void channelDeactivated() {
         activeChannels.decrementAndGet();
     }
 
+    /** Increments completed-request count for connection reuse diagnostics. */
     public static void recordRequestOnConnection() {
         requestsOnConnections.incrementAndGet();
     }

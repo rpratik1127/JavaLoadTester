@@ -14,6 +14,7 @@ public final class LoadTestShutdown {
     private LoadTestShutdown() {
     }
 
+    /** Shuts down the executor and waits up to the timeout for task completion. */
     public static void drainExecutor(ExecutorService executorService, long timeoutSeconds)
             throws InterruptedException {
         executorService.shutdown();
@@ -25,6 +26,7 @@ public final class LoadTestShutdown {
         HttpExecutor.waitForInflightDrain(TestConstants.httpDrainTimeoutMs());
     }
 
+    /** Drains the virtual-user executor, then waits for in-flight HTTP to finish. */
     public static void drainExecutorAndInflightHttp(ExecutorService executorService, long timeoutSeconds)
             throws InterruptedException {
         drainExecutor(executorService, timeoutSeconds);

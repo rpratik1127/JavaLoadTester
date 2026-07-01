@@ -18,6 +18,7 @@ public class PersonaParser {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /** Loads and prepares a test plan from a filesystem JSON path. */
     public TestPlan parse(String filePath) throws Exception {
         Path path = Path.of(filePath);
 
@@ -31,6 +32,7 @@ public class PersonaParser {
         }
     }
 
+    /** Deserializes inline persona JSON (API path) and applies static-body precomputation. */
     public TestPlan parseFromJson(String jsonContent) throws Exception {
         if (jsonContent == null || jsonContent.isBlank()) {
             throw new IllegalArgumentException("Persona JSON content must not be blank");
@@ -49,6 +51,7 @@ public class PersonaParser {
         return plan;
     }
 
+    /** Pre-serializes static JSON bodies and Netty templates for all persona steps. */
     private void precomputeStaticArtifacts(TestPlan plan) throws Exception {
         if (plan.personas == null) {
             return;

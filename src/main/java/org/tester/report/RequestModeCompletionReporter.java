@@ -15,6 +15,7 @@ public final class RequestModeCompletionReporter {
     private RequestModeCompletionReporter() {
     }
 
+    /** Prints persona completion lines comparing targets, spawned VUs, and recorded requests. */
     public static void print(
             MetricsCollector metricsCollector,
             PersonaLoadConfig loadConfig,

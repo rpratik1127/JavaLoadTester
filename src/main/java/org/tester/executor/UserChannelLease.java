@@ -31,6 +31,7 @@ final class UserChannelLease {
     private final ConcurrentLinkedQueue<SendWork> sendQueue = new ConcurrentLinkedQueue<>();
     private volatile boolean sending;
 
+    /** Binds a sticky channel lease to a virtual user and host pool entry. */
     UserChannelLease(String key, FixedChannelPool pool, Channel channel) {
         this.key = key;
         this.pool = pool;
@@ -43,6 +44,7 @@ final class UserChannelLease {
                 && channel.isActive();
     }
 
+    /** Serializes sends on the lease channel through the event-loop queue. */
     void enqueue(SendWork work) {
         if (!sending && sendQueue.isEmpty()) {
             sending = true;
@@ -63,6 +65,7 @@ final class UserChannelLease {
         }
     }
 
+    /** Signals completion of the active send and drains any queued work. */
     void onSendComplete() {
         sending = false;
         drainQueue();

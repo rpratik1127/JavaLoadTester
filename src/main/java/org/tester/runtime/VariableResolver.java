@@ -8,6 +8,7 @@ public class VariableResolver {
 
     private static final Pattern VARIABLE_PATTERN = Pattern.compile("\\$\\{([^}]+)}");
 
+    /** Substitutes {@code ${name}} tokens using values from the virtual-user store. */
     public String resolve(String input, VariableStore variableStore) {
         if (input == null) {
             return null;

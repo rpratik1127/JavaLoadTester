@@ -18,6 +18,7 @@ public class RequestMetric {
     /** Optional per-phase nanosecond timestamps for request-log / diagnostics. */
     public RequestPhaseTimings phaseTimings;
 
+    /** Records a completed step with implicit success/failure reason derivation. */
     public RequestMetric(
             String userId,
             String personaName,
@@ -30,6 +31,7 @@ public class RequestMetric {
                 success ? RequestFailureReason.NONE : RequestFailureReason.UNKNOWN, null);
     }
 
+    /** Records a completed step with explicit failure reason and detail. */
     public RequestMetric(
             String userId,
             String personaName,
@@ -51,6 +53,7 @@ public class RequestMetric {
         this.timestamp = System.currentTimeMillis();
     }
 
+    /** Builds a failure metric with no HTTP response received. */
     public static RequestMetric failed(
             String userId,
             String personaName,
@@ -70,6 +73,7 @@ public class RequestMetric {
         );
     }
 
+    /** Convenience factory for generic execution errors with a message detail. */
     public static RequestMetric failed(String userId, String personaName, String stepName, String errorMessage) {
         return failed(userId, personaName, stepName, RequestFailureReason.EXECUTION_ERROR, errorMessage);
     }

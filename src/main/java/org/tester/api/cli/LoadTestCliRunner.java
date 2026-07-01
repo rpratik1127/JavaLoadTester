@@ -22,11 +22,13 @@ public class LoadTestCliRunner {
     private final LoadTestService loadTestService;
     private final PersonaParser personaParser;
 
+    /** Injects the shared load-test service and persona parser. */
     public LoadTestCliRunner(LoadTestService loadTestService, PersonaParser personaParser) {
         this.loadTestService = loadTestService;
         this.personaParser = personaParser;
     }
 
+    /** Collects interactive inputs and delegates execution to {@link LoadTestService}. */
     public void run(String[] args) throws Exception {
         CliOptions options = CliOptions.fromArgs(args);
 

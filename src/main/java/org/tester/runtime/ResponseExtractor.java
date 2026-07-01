@@ -8,16 +8,17 @@ public class ResponseExtractor {
 
     private static final ObjectMapper objectMapper = new ObjectMapper();
 
+    /** Resolves a JSON or plain-text path expression against the response body. */
     public String extract(String responseBody, String path) throws Exception {
         if (responseBody == null || responseBody.isBlank()) return null;
         if (path == null || path.isBlank()) return null;
 
-        // Handles plain text response body, like JWT token directly in response
+        // Plain-text body shortcut: return the entire response when path is "$body" or "body".
         if ("$body".equals(path) || "body".equals(path) || "$".equals(path)) {
             return responseBody.trim();
         }
 
-        // Handles JSON response body
+        // JSON path traversal for nested fields and array indices.
         JsonNode currentNode = objectMapper.readTree(responseBody);
         String[] parts = path.split("[.\\[\\]]+");
 

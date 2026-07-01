@@ -13,6 +13,7 @@ final class HttpDebugLog {
     private HttpDebugLog() {
     }
 
+    /** Emits a rate-limited warning to stderr under load. */
     static void warn(String message) {
         if (WARNING_COUNT.incrementAndGet() <= MAX_WARNINGS) {
             System.err.println(message);
@@ -22,6 +23,7 @@ final class HttpDebugLog {
         }
     }
 
+    /** Emits a rate-limited warning with optional cause to stderr under load. */
     static void warn(String message, Throwable cause) {
         if (WARNING_COUNT.incrementAndGet() <= MAX_WARNINGS) {
             System.err.println(message + (cause == null ? "" : ": " + cause));
@@ -31,6 +33,7 @@ final class HttpDebugLog {
         }
     }
 
+    /** Prints a debug line when HTTP debug logging is enabled. */
     static void debug(String message) {
         if (HttpExecutor.isDebugEnabled()) {
             System.out.println(message);

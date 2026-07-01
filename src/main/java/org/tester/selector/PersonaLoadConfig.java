@@ -20,25 +20,30 @@ public class PersonaLoadConfig {
     public final LoadInputMode mode;
     public final Map<String, Integer> valuesPerPersona;
 
+    /** Captures load mode and per-persona targets selected for the run. */
     public PersonaLoadConfig(LoadInputMode mode, Map<String, Integer> valuesPerPersona) {
         this.mode = mode;
         this.valuesPerPersona = Collections.unmodifiableMap(new LinkedHashMap<>(valuesPerPersona));
     }
 
+    /** Records total virtual users for CSV summary reporting after user-mode selection. */
     public static void setTotalUsers(int count) {
         totalUsers = count;
     }
 
+    /** Returns the total virtual users recorded for the current run. */
     public static int getTotalUsers() {
         return totalUsers;
     }
 
+    /** Records per-persona spawned VU counts after request-mode scaler shutdown. */
     public static void setSpawnedPerPersona(Map<String, Integer> spawned) {
         spawnedPerPersona = spawned == null
                 ? Map.of()
                 : Collections.unmodifiableMap(new LinkedHashMap<>(spawned));
     }
 
+    /** Returns the per-persona spawned VU snapshot from the last request-mode run. */
     public static Map<String, Integer> getSpawnedPerPersona() {
         return spawnedPerPersona;
     }

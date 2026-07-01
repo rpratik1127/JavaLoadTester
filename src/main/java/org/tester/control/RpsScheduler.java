@@ -28,10 +28,12 @@ public class RpsScheduler {
     /** Fractional tokens below 1 are carried forward between refill ticks. */
     private double storedFraction = 0.0;
 
+    /** Creates a token bucket with burst capacity equal to target RPS. */
     public RpsScheduler(int targetRps) {
         this(targetRps, targetRps);
     }
 
+    /** Creates a token bucket with an explicit maximum burst size. */
     public RpsScheduler(int targetRps, int maxBurstTokens) {
         if (targetRps <= 0) {
             throw new IllegalArgumentException("targetRps must be positive");
@@ -52,6 +54,7 @@ public class RpsScheduler {
         startRefill();
     }
 
+    /** Starts periodic token refill and waiter draining on a daemon thread. */
     private void startRefill() {
         double tokensPerInterval = targetRps * (REFILL_INTERVAL_MS / 1000.0);
 
@@ -76,6 +79,7 @@ public class RpsScheduler {
         }, 0, REFILL_INTERVAL_MS, TimeUnit.MILLISECONDS);
     }
 
+    /** Waits asynchronously for a rate-limit permit. */
     public CompletableFuture<Void> acquire() {
         if (tryTakeToken()) {
             acquiredTotal.incrementAndGet();
@@ -120,6 +124,7 @@ public class RpsScheduler {
         }
     }
 
+    /** Wakes queued acquirers when tokens become available after refill. */
     private void drainWaiters() {
         while (true) {
             int current = availableTokens.get();

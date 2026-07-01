@@ -14,6 +14,7 @@ import java.util.List;
  */
 public class ReportGenerator {
 
+    /** Prints terminal summaries and appends one row to the CSV summary report. */
     public void printSummary(
             MetricsCollector metricsCollector,
             int durationSeconds,
@@ -65,6 +66,7 @@ public class ReportGenerator {
         System.out.println("\n=============================");
     }
 
+    /** Derives send-rate stats from the collector or falls back to completed-response TPS. */
     private static SentRateStats resolveSentRateStats(MetricsCollector metricsCollector, double tps) {
         if (metricsCollector.isTrackSentRpsEnabled()) {
             return new SentRateStats(

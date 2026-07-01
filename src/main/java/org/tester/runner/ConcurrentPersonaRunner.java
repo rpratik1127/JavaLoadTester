@@ -21,6 +21,7 @@ import java.util.concurrent.Executors;
  */
 public class ConcurrentPersonaRunner {
 
+    /** Executes the configured personas and records runtime metrics. */
     public void runPersonas(
             List<Persona> personas,
             PersonaLoadConfig loadConfig,
@@ -61,6 +62,7 @@ public class ConcurrentPersonaRunner {
         runUserMode(context);
     }
 
+    /** Runs total-request mode with dynamic VU scaling and budget pacing. */
     private void runRequestMode(RunContext context) throws InterruptedException {
         configurePooledConnectionsForRequestMode(context);
         warmRequestModePools(context);
@@ -106,6 +108,7 @@ public class ConcurrentPersonaRunner {
         }
     }
 
+    /** Spawns fixed virtual users per persona until the test window ends. */
     private void runUserMode(RunContext context) throws InterruptedException {
         configureConnectionsForUserMode();
         warmUserModePools(context);
@@ -125,6 +128,7 @@ public class ConcurrentPersonaRunner {
         );
     }
 
+    /** Enables dedicated keep-alive channels or sticky mode for user-mode throughput. */
     private static void configureConnectionsForUserMode() {
         if (HttpExecutor.getConnectionMode() == ConnectionMode.STICKY) {
             System.out.println(
@@ -143,6 +147,7 @@ public class ConcurrentPersonaRunner {
         );
     }
 
+    /** Pre-opens pooled connections sized for each persona's virtual-user count. */
     private static void warmUserModePools(RunContext context) throws InterruptedException {
         if (HttpExecutor.getConnectionMode() == ConnectionMode.STICKY) {
             return;
@@ -163,6 +168,7 @@ public class ConcurrentPersonaRunner {
         }
     }
 
+    /** Sizes the shared pool for request-mode Little's-law throughput targets. */
     private static void configurePooledConnectionsForRequestMode(RunContext context) {
         HttpExecutor.setConnectionMode(ConnectionMode.POOLED);
         HttpExecutor.setDedicatedUserChannels(false);
@@ -194,6 +200,7 @@ public class ConcurrentPersonaRunner {
         return Math.min(maxNeeded, TestConstants.POOL_WARMUP_MAX);
     }
 
+    /** Pre-opens pooled connections sized for each persona's scheduled request rate. */
     private static void warmRequestModePools(RunContext context) throws InterruptedException {
         int poolCap = HttpExecutor.getMaxConnectionsPerHost();
         for (Persona persona : context.personas) {
@@ -213,6 +220,7 @@ public class ConcurrentPersonaRunner {
         }
     }
 
+    /** Opens connections in batches; partial warmup is tolerated and logged. */
     private static void warmPool(Persona persona, int warmCount) throws InterruptedException {
         try {
             HttpExecutor.warmPool(persona.baseUrl, warmCount)
@@ -229,6 +237,7 @@ public class ConcurrentPersonaRunner {
         }
     }
 
+    /** Computes staggered spawn delay to spread virtual users across ramp-up. */
     private static long computeRampDelayMs(int rampUpSeconds, int totalUsers) {
         if (rampUpSeconds <= 0 || totalUsers <= 1) {
             return 0;
@@ -236,6 +245,7 @@ public class ConcurrentPersonaRunner {
         return (rampUpSeconds * 1000L) / totalUsers;
     }
 
+    /** Distributes virtual users across personas with optional ramp-up pacing. */
     private static void spawnUserModeVirtualUsers(RunContext context, long delayBetweenUsersMs)
             throws InterruptedException {
         for (Persona persona : context.personas) {
@@ -290,6 +300,7 @@ public class ConcurrentPersonaRunner {
         Thread.sleep(TestConstants.REQUEST_MODE_END_DRAIN_MS);
     }
 
+    /** True when every persona has consumed its full request budget. */
     private boolean allRequestBudgetsMet(
             RequestModePacer requestModePacer,
             Map<String, Integer> requestTargets,

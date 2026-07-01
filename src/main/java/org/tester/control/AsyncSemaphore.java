@@ -14,6 +14,7 @@ public class AsyncSemaphore {
     private final ConcurrentLinkedQueue<CompletableFuture<Void>> waiters =
             new ConcurrentLinkedQueue<>();
 
+    /** Creates a non-blocking concurrency limiter with the given permit count. */
     public AsyncSemaphore(int maxPermits) {
         if (maxPermits <= 0) {
             throw new IllegalArgumentException("maxPermits must be positive");
@@ -53,6 +54,7 @@ public class AsyncSemaphore {
         }
     }
 
+    /** Releases a permit and hands it to the next waiter or decrements in-use count. */
     public void release() {
         CompletableFuture<Void> waiter = waiters.poll();
         if (waiter != null) {

@@ -5,6 +5,7 @@ import java.util.Scanner;
 /** Reads optional global TPS cap from stdin; 0 means unlimited. */
 public class TargetTpsSelector {
 
+    /** Prompts for a global TPS cap; zero disables throttling. */
     public int selectTargetTps() {
         Scanner scanner = new Scanner(System.in);
 

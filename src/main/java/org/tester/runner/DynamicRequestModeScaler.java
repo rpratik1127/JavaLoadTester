@@ -67,6 +67,7 @@ public class DynamicRequestModeScaler {
                 return t;
             });
 
+    /** Wires scaler dependencies shared across all personas in request mode. */
     public DynamicRequestModeScaler(
             ExecutorService executorService,
             long startTimeMillis,
@@ -93,6 +94,7 @@ public class DynamicRequestModeScaler {
         this.personas = personas;
     }
 
+    /** Seeds initial VUs per persona and starts the periodic scaling loop. */
     public void start() {
         for (Persona persona : personas) {
             int target = requestTargets.getOrDefault(persona.name, 0);
@@ -120,6 +122,7 @@ public class DynamicRequestModeScaler {
         scheduleNextScale(SCALE_INTERVAL_FAST_MS);
     }
 
+    /** Schedules the next scaler tick with adaptive delay when behind schedule. */
     private void scheduleNextScale(long delayMs) {
         scalerExecutor.schedule(() -> {
             if (System.currentTimeMillis() >= endTimeMillis) {
@@ -132,6 +135,7 @@ public class DynamicRequestModeScaler {
         }, delayMs, TimeUnit.MILLISECONDS);
     }
 
+    /** Evaluates all personas and spawns VUs where schedule or projections lag. */
     private boolean scale() {
         long now = System.currentTimeMillis();
         if (now >= endTimeMillis) {
@@ -219,6 +223,7 @@ public class DynamicRequestModeScaler {
         return true;
     }
 
+    /** Computes how many VUs to add this tick from deficit and cap constraints. */
     private int computeUsersToAdd(
             Persona persona,
             int consumed,
@@ -241,6 +246,7 @@ public class DynamicRequestModeScaler {
         return Math.min(usersToAdd, userCap - spawned);
     }
 
+    /** Determines the initial VU count before the scaler loop takes over. */
     private int computeInitialSpawn(String personaName, int target, int required) {
         int targetRps = RequestModePacer.computeTargetRps(target, durationSeconds);
         // Start with enough VUs for target RPS at ~1s latency, not a tiny warm-up fraction.
@@ -259,6 +265,7 @@ public class DynamicRequestModeScaler {
         return Math.max(1, Math.min(required, rampUserCap(0, initial)));
     }
 
+    /** Spawns up to {@code usersToAdd} VUs, respecting cap and in-flight headroom. */
     private void spawnUsers(Persona persona, int usersToAdd, int userCap) {
         int batch = Math.min(usersToAdd, MAX_SPAWN_PER_TICK);
         for (int i = 0; i < batch; i++) {
@@ -272,6 +279,7 @@ public class DynamicRequestModeScaler {
         }
     }
 
+    /** Estimates VUs needed to sustain the required request rate at observed latency. */
     private int usersNeededForRate(String personaName, int targetRequests, double requiredRps) {
         double avgLatencySec = cappedLatencySec(personaName);
         int fromRate = (int) Math.ceil(requiredRps * avgLatencySec * 2.0);
@@ -285,6 +293,7 @@ public class DynamicRequestModeScaler {
         return computeUserCap(personaName, targetRequests);
     }
 
+    /** Upper bound on concurrent VUs derived from Little's law and target RPS. */
     private int computeUserCap(String personaName, int targetRequests) {
         int targetRps = RequestModePacer.computeTargetRps(targetRequests, durationSeconds);
         double latencySec = cappedLatencySec(personaName);
@@ -302,6 +311,7 @@ public class DynamicRequestModeScaler {
         return Math.min(targetRequests, Math.min(absoluteMax, Math.max(fromLittle, floorForTarget)));
     }
 
+    /** Uses observed latency with warmup and overload caps for VU sizing. */
     private double cappedLatencySec(String personaName) {
         double observed = metricsCollector.getAverageResponseTimeForPersona(personaName) / 1000.0;
         if (observed <= 0) {
@@ -310,6 +320,7 @@ public class DynamicRequestModeScaler {
         return Math.min(observed, MAX_LATENCY_FOR_SCALING_SEC);
     }
 
+    /** Limits concurrent VUs during ramp-up based on elapsed time fraction. */
     private int rampUserCap(long elapsedSec, int maxConcurrentUsers) {
         if (rampUpSeconds <= 0 || elapsedSec >= rampUpSeconds) {
             return maxConcurrentUsers;
@@ -319,10 +330,12 @@ public class DynamicRequestModeScaler {
         return Math.max(1, (int) Math.ceil(maxConcurrentUsers * progress));
     }
 
+    /** False when HTTP in-flight headroom is too low to accept more sends. */
     private boolean canSpawnMore() {
         return HttpExecutor.getAvailableInFlightPermits() >= MIN_IN_FLIGHT_HEADROOM;
     }
 
+    /** Submits one request-mode VU and rolls back counters on executor rejection. */
     private void spawnUser(Persona persona) {
         if (!canSpawnMore()) {
             return;
@@ -362,14 +375,17 @@ public class DynamicRequestModeScaler {
         }
     }
 
+    /** Returns total VUs spawned across all personas since scaler start. */
     public int getTotalSpawned() {
         return totalSpawned.get();
     }
 
+    /** Returns immutable snapshots of currently active VUs per persona. */
     public Map<String, Integer> getActiveUsersSnapshot() {
         return AtomicCounterSnapshots.snapshot(activeUsers);
     }
 
+    /** Returns immutable snapshots of total VUs spawned per persona. */
     public Map<String, Integer> getSpawnedUsersSnapshot() {
         return AtomicCounterSnapshots.snapshot(spawnedUsers);
     }
@@ -379,6 +395,7 @@ public class DynamicRequestModeScaler {
         return getActiveUsersSnapshot();
     }
 
+    /** Stops the scaler scheduler without waiting for in-flight VU work. */
     public void shutdown() {
         scalerExecutor.shutdownNow();
     }

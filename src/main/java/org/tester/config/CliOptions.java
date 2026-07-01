@@ -14,12 +14,14 @@ public final class CliOptions {
     /** Pooled (default) or sticky per-user HTTP connections. */
     public final ConnectionMode connectionMode;
 
+    /** Immutable snapshot of parsed CLI flags. */
     private CliOptions(boolean generateRequestLog, boolean trackSentRps, ConnectionMode connectionMode) {
         this.generateRequestLog = generateRequestLog;
         this.trackSentRps = trackSentRps;
         this.connectionMode = connectionMode;
     }
 
+    /** Parses supported flags from {@code args}; unrecognized tokens are ignored. */
     public static CliOptions fromArgs(String[] args) {
         boolean generateRequestLog = false;
         boolean trackSentRps = false;

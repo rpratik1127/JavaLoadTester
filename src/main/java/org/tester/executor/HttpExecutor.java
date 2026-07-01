@@ -156,10 +156,12 @@ public class HttpExecutor {
     // Initialization & Utility Accessors
     // =========================================================================
 
+    /** Creates an executor without send-time RPS tracking. */
     public HttpExecutor() {
         this.metricsCollector = null;
     }
 
+    /** Creates an executor that records send-time RPS through the metrics collector. */
     public HttpExecutor(MetricsCollector metricsCollector) {
         this.metricsCollector = metricsCollector;
     }
@@ -312,8 +314,9 @@ public class HttpExecutor {
                 SslContext context = builder.sslProvider(SslProvider.OPENSSL).build();
                 System.out.println("[HttpExecutor] TLS provider: OpenSSL (tcnative)");
                 return context;
-            } catch (Exception opensslError) {
-                System.out.println("[HttpExecutor] TLS provider: JDK (OpenSSL unavailable)");
+            } catch (Throwable opensslError) {
+                System.out.println("[HttpExecutor] TLS provider: JDK (OpenSSL unavailable: "
+                        + opensslError.getMessage() + ")");
                 return builder.sslProvider(SslProvider.JDK).build();
             }
 
@@ -326,6 +329,7 @@ public class HttpExecutor {
     // Execution API (Public Entry Points)
     // =========================================================================
 
+    /** Asynchronously executes one HTTP step and returns timing-enriched metrics. */
     public CompletableFuture<RequestMetric> executeAsync(
             String userId,
             String personaName,
@@ -1985,6 +1989,7 @@ public class HttpExecutor {
         }
     }
 
+    /** Releases pooled resources, channels, and the shared Netty event loop. */
     public static void shutdown() {
         RESPONSE_PROCESSING_EXECUTOR.shutdown();
 

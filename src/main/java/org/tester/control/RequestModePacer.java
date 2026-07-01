@@ -13,6 +13,7 @@ public class RequestModePacer {
     private final int durationSeconds;
     private final Map<String, PersonaRequestBudget> budgets = new ConcurrentHashMap<>();
 
+    /** Builds per-persona linear release schedules from total request targets. */
     public RequestModePacer(
             Map<String, Integer> requestTargets,
             long startTimeMillis,
@@ -146,6 +147,7 @@ public class RequestModePacer {
         return durationSeconds;
     }
 
+    /** Stops all persona budgets and the shared budget scheduler. */
     public void shutdown() {
         budgets.values().forEach(PersonaRequestBudget::shutdown);
         budgets.clear();

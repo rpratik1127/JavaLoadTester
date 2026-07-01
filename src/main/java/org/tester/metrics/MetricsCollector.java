@@ -341,6 +341,7 @@ public class MetricsCollector {
         }
     }
 
+    /** Under heavy load, samples persona/step histogram updates to reduce contention. */
     private boolean shouldSampleDetailHisto() {
         long total = totalRequests.sum();
         if (total < HISTO_SAMPLE_MIN_REQUESTS) {
@@ -572,6 +573,7 @@ public class MetricsCollector {
     // Phase timing aggregates
     // =========================================================================
 
+    /** Averages per-request phase durations across the detailed request log buffer. */
     public PhaseTimingSummary getPhaseTimingSummary() {
         long count = 0;
         double toAcquireStart = 0;
@@ -633,6 +635,7 @@ public class MetricsCollector {
     // Raw metrics
     // =========================================================================
 
+    /** Returns a copy of recorded metrics from the circular raw buffer. */
     public List<RequestMetric> getAllMetrics() {
         long recorded = Math.min(rawIndex.get(), RAW_SIZE);
         List<RequestMetric> result = new ArrayList<>((int) recorded);

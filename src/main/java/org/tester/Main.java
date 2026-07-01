@@ -11,6 +11,7 @@ import org.tester.api.cli.LoadTestCliRunner;
  */
 public class Main {
 
+    /** Entry point for CLI-based execution via a headless Spring context. */
     public static void main(String[] args) throws Exception {
         try (var context = new SpringApplicationBuilder(LoadTesterApplication.class)
                 .web(WebApplicationType.NONE)

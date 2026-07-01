@@ -16,6 +16,7 @@ public record PhaseTimingSummary(
         double bodyMs,
         double totalMs
 ) {
+    /** Sentinel summary when no requests recorded phase timings. */
     public static PhaseTimingSummary empty() {
         return new PhaseTimingSummary(0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1);
     }

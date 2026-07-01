@@ -36,6 +36,7 @@ public class VirtualUser implements Runnable {
     private final AtomicInteger activeUserCounter;
     private final AtomicBoolean keepAlive;
 
+    /** Factory for fixed-duration user mode without request budgeting. */
     public static VirtualUser forUserMode(
             String userId,
             Persona persona,
@@ -58,6 +59,7 @@ public class VirtualUser implements Runnable {
         );
     }
 
+    /** Factory for request-mode VUs gated by {@link RequestModePacer} permits. */
     public static VirtualUser forRequestMode(
             String userId,
             Persona persona,
@@ -82,6 +84,7 @@ public class VirtualUser implements Runnable {
         );
     }
 
+    /** Internal constructor wiring optional pacing, budgeting, and lifecycle hooks. */
     VirtualUser(
             String userId,
             Persona persona,
@@ -123,6 +126,7 @@ public class VirtualUser implements Runnable {
         }
     }
 
+    /** Executes one full pass through the persona step list. */
     private void runOneIteration(VariableStore variableStore) {
         for (int stepIndex = 0; stepIndex < persona.steps.size(); stepIndex++) {
             if (shouldStop() || isBudgetExhausted()) {
@@ -149,6 +153,7 @@ public class VirtualUser implements Runnable {
         }
     }
 
+    /** Blocks until global TPS throttling grants a send permit. */
     private boolean acquireSendGateSync() {
         if (throughputController == null) {
             return true;
@@ -157,6 +162,7 @@ public class VirtualUser implements Runnable {
         return !shouldStop();
     }
 
+    /** Acquires a persona request permit from the pacer or limiter before sending. */
     private boolean acquireBudgetSync() {
         if (requestModePacer != null) {
             if (requestModePacer.tryAcquireNow(persona.name)) {
@@ -171,6 +177,7 @@ public class VirtualUser implements Runnable {
         return true;
     }
 
+    /** Sends one step and records success or failure in the metrics collector. */
     private void executeAndRecord(ApiStep step, VariableStore variableStore) {
         try {
             RequestMetric metric = stepExecutor
@@ -186,12 +193,14 @@ public class VirtualUser implements Runnable {
         }
     }
 
+    /** Returns an unused request permit when the send is aborted after acquisition. */
     private void releaseBudget() {
         if (requestModePacer != null) {
             requestModePacer.release(persona.name);
         }
     }
 
+    /** True when the persona has no remaining request permits. */
     private boolean isBudgetExhausted() {
         if (requestModePacer != null) {
             return requestModePacer.isExhausted(persona.name);
@@ -202,6 +211,7 @@ public class VirtualUser implements Runnable {
         return false;
     }
 
+    /** Applies configured think time between steps without blocking shutdown. */
     private static void sleepThinkTime(ApiStep step) {
         if (step.thinkTimeMs == null || step.thinkTimeMs <= 0) {
             return;
@@ -213,6 +223,7 @@ public class VirtualUser implements Runnable {
         }
     }
 
+    /** Stops the VU when time expires, budget is exhausted, or keep-alive is cleared. */
     private boolean shouldStop() {
         if (keepAlive != null && !keepAlive.get()) {
             return true;

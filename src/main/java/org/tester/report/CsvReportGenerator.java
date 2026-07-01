@@ -28,6 +28,7 @@ public class CsvReportGenerator {
                     "avgResponseTimeMs,minResponseTimeMs,maxResponseTimeMs,p90Ms,p95Ms,p99Ms,p999Ms," +
                     "status0,status400,status401,status403,status404,status429,status500,status502,status503,status504,otherFailures\n";
 
+    /** Appends one summary row to {@code csvreport.csv}, creating the header when needed. */
     public static synchronized void appendSummary(
             int durationSeconds,
             long totalRequests,
@@ -111,6 +112,7 @@ public class CsvReportGenerator {
         }
     }
 
+    /** Writes per-persona step aggregates to the configured CSV path. */
     public void generateStepReport(
             MetricsCollector metricsCollector,
             List<Persona> personas,
@@ -144,6 +146,7 @@ public class CsvReportGenerator {
         System.out.println("CSV report generated: " + filePath);
     }
 
+    /** Writes per-request metrics with phase timings when detailed logging is enabled. */
     public void generateDetailedRequestReport(
             MetricsCollector metricsCollector,
             String filePath

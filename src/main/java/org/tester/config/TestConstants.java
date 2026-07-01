@@ -60,10 +60,12 @@ public final class TestConstants {
     private TestConstants() {
     }
 
+    /** Exposes the HTTP in-flight drain timeout for shutdown coordination. */
     public static long httpDrainTimeoutMs() {
         return HTTP_DRAIN_TIMEOUT_MS;
     }
 
+    /** Exposes the virtual-thread executor drain timeout for shutdown coordination. */
     public static long executorDrainSeconds() {
         return EXECUTOR_DRAIN_SEC;
     }

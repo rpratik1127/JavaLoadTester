@@ -14,10 +14,12 @@ public class StepExecutor {
 
     private final HttpExecutor httpExecutor;
 
+    /** Creates a step dispatcher backed by a shared Netty HTTP client. */
     public StepExecutor(MetricsCollector metricsCollector) {
         this.httpExecutor = new HttpExecutor(metricsCollector);
     }
 
+    /** Dispatches one persona step to the HTTP executor when the protocol is supported. */
     public CompletableFuture<RequestMetric> executeAsync(
             String userId,
             Persona persona,

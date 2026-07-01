@@ -12,6 +12,7 @@ public class PersonaRequestLimiter {
     private final Map<String, Integer> limits;
     private final Map<String, AtomicInteger> counts = new ConcurrentHashMap<>();
 
+    /** Initializes per-persona atomic counters from configured limits. */
     public PersonaRequestLimiter(Map<String, Integer> limits) {
         this.limits = limits;
         for (String personaName : limits.keySet()) {
@@ -29,6 +30,7 @@ public class PersonaRequestLimiter {
         return count != null && count.get() >= limit;
     }
 
+    /** Atomically increments the persona count when under the configured limit. */
     public boolean tryAcquire(String personaName) {
         Integer limit = limits.get(personaName);
         if (limit == null || limit <= 0) {

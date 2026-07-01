@@ -19,10 +19,12 @@ public final class BudgetScheduler {
     private BudgetScheduler() {
     }
 
+    /** Registers a persona budget on the shared tick scheduler. */
     public static void register(PersonaRequestBudget budget) {
         SCHEDULER.scheduleAtFixedRate(budget::tick, 0, PersonaRequestBudget.TICK_MS, TimeUnit.MILLISECONDS);
     }
 
+    /** Stops the shared budget tick thread at test end. */
     public static void shutdown() {
         SCHEDULER.shutdownNow();
     }

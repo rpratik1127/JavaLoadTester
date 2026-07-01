@@ -12,6 +12,7 @@ final class AtomicCounterSnapshots {
     private AtomicCounterSnapshots() {
     }
 
+    /** Copies live atomic counters into an immutable map for reporting. */
     static Map<String, Integer> snapshot(Map<String, AtomicInteger> counters) {
         Map<String, Integer> result = new ConcurrentHashMap<>();
         counters.forEach((name, count) -> result.put(name, count.get()));

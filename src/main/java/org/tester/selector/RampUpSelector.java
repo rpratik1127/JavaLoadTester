@@ -5,6 +5,7 @@ import java.util.Scanner;
 /** Reads ramp-up duration from stdin (must not exceed test duration). */
 public class RampUpSelector {
 
+    /** Prompts for ramp-up duration, bounded by the total test duration. */
     public int selectRampUpSeconds(int durationSeconds) {
         Scanner scanner = new Scanner(System.in);
 

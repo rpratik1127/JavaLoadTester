@@ -12,6 +12,7 @@ import java.util.Scanner;
  */
 public class PersonaUserSelector {
 
+    /** Prompts for load mode and per-persona user or request counts. */
     public PersonaLoadConfig selectLoadConfig(List<Persona> personas) {
         Scanner scanner = new Scanner(System.in);
         LoadInputMode mode = selectInputMode(scanner);
@@ -65,6 +66,7 @@ public class PersonaUserSelector {
         return new PersonaLoadConfig(mode, valuesPerPersona);
     }
 
+    /** Reads USERS vs REQUESTS mode from stdin with validation. */
     private LoadInputMode selectInputMode(Scanner scanner) {
         while (true) {
             System.out.println("Select load input mode:");

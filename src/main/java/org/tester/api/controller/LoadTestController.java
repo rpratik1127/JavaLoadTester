@@ -13,6 +13,7 @@ import org.tester.api.dto.LoadTestResponse;
 import org.tester.api.service.LoadTestExecutionStore;
 import org.tester.api.service.LoadTestService;
 
+/** REST endpoints for starting and querying load-test executions. */
 @RestController
 @RequestMapping("/api/load-test")
 public class LoadTestController {
@@ -20,16 +21,19 @@ public class LoadTestController {
     private final LoadTestService loadTestService;
     private final LoadTestExecutionStore executionStore;
 
+    /** Injects the load-test service and execution lookup store. */
     public LoadTestController(LoadTestService loadTestService, LoadTestExecutionStore executionStore) {
         this.loadTestService = loadTestService;
         this.executionStore = executionStore;
     }
 
+    /** Starts a synchronous load test from the request body configuration. */
     @PostMapping("/run")
     public LoadTestResponse run(@RequestBody LoadTestRequest request) throws Exception {
         return loadTestService.runTest(request);
     }
 
+    /** Returns the stored result for a completed or failed execution. */
     @GetMapping("/{executionId}")
     public LoadTestResponse getExecution(@PathVariable String executionId) {
         return executionStore.findById(executionId)

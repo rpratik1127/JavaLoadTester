@@ -5,6 +5,7 @@ import java.util.Scanner;
 /** Reads test duration from stdin. */
 public class TestDurationSelector {
 
+    /** Prompts for the steady-state test window in seconds. */
     public int selectDurationInSeconds() {
         Scanner scanner = new Scanner(System.in);
 

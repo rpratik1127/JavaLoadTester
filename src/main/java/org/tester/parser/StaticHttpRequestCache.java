@@ -20,6 +20,7 @@ final class StaticHttpRequestCache {
     private StaticHttpRequestCache() {
     }
 
+    /** Builds and stores a Netty request template when the step has no dynamic variables. */
     static void precompute(Persona persona, ApiStep step) {
         if (!isFullyStatic(persona, step)) {
             return;
@@ -57,6 +58,7 @@ final class StaticHttpRequestCache {
         step.cachedRequestTemplate = template;
     }
 
+    /** True when URL, headers, body, and query params contain no {@code ${}} placeholders. */
     private static boolean isFullyStatic(Persona persona, ApiStep step) {
         if (step.url != null && step.url.contains("${")) {
             return false;

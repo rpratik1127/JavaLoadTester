@@ -23,6 +23,7 @@ public class PersonaRequestBudget {
     private final ConcurrentLinkedQueue<CompletableFuture<Boolean>> waiters =
             new ConcurrentLinkedQueue<>();
 
+    /** Creates a time-scheduled request cap and registers on the shared tick loop. */
     public PersonaRequestBudget(int limit, long startMillis, long durationMillis, int targetRps) {
         if (limit <= 0) {
             throw new IllegalArgumentException("limit must be positive");
@@ -209,6 +210,7 @@ public class PersonaRequestBudget {
         }
     }
 
+    /** Fails all waiters and clears the budget queue at shutdown. */
     public void shutdown() {
         waiters.forEach(waiter -> {
             if (!waiter.isDone()) {
